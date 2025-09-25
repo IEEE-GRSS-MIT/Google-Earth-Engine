@@ -1,0 +1,53 @@
+// Load Sentinel-2 surface reflectance data
+var s2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
+          .filterBounds(roi)
+          .filterDate('2024-01-01', '2024-12-31') // Adjust date range
+          .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 10)) // Filter by cloud cover
+          .median();
+
+// Clip to ROI
+var s2_clipped = s2.clip(roi);
+
+// Display on map
+Map.centerObject(roi, 10);
+Map.addLayer(s2_clipped, {bands: ['B4', 'B3', 'B2'], min: 0, max: 3000}, 'Sentinel-2 RGB');
+
+// Merge all classes into a single FeatureCollection
+var trainingData = water.merge(land).merge(builtup_area).merge(vegetation);
+
+// Display training points
+Map.addLayer(trainingData, {}, 'Training Points');
+
+// Sample Sentinel-2 data at training points
+var training = s2_clipped.sampleRegions({
+  collection: trainingData,
+  properties: ['landcover'],
+  scale: 10
+});
+
+// Train a classifier
+var classifier = ee.Classifier.smileCart().train({
+  features: training,
+  classProperty: 'landcover',
+  inputProperties: s2_clipped.bandNames()
+});
+
+// Apply the classifier
+var classified = s2_clipped.classify(classifier);
+
+// Add a legend
+var legend = ui.Panel({style: {position: 'bottom-left', padding: '8px'}});
+
+legend.add(ui.Label('Legend', {fontWeight: 'bold', fontSize: '16px', margin: '0 0 4px 0'}));
+
+[['Water', 'blue'], ['Land', 'yellow'], ['Built-up Area', 'red'], ['Vegetation', 'green']].forEach(function(item) {
+  legend.add(ui.Panel([
+    ui.Label('', {backgroundColor: item[1], padding: '8px', margin: '0 8px 0 0', border: '1px solid black'}),
+    ui.Label(item[0], {margin: '4px 0', fontSize: '14px'})
+  ], ui.Panel.Layout.Flow('horizontal')));
+});
+
+Map.add(legend);
+
+// Display the classified image
+Map.addLayer(classified, {min: 0, max: 3, palette: ['blue','yellow','red', 'green']}, 'Classified Image');
