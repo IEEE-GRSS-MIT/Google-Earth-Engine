@@ -1,0 +1,33 @@
+var aoi = ee.Geometry.Point([74.75998110419411, 13.333320221790698]);
+Map.centerObject(aoi, 10);
+
+// Load Sentinel-2 Surface Reflectance collection
+var sent2 = ee.ImageCollection("COPERNICUS/S2_HARMONIZED")
+  .filterBounds(aoi)
+  .filterDate('2018-04-01', '2018-04-30')
+  .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 10))
+  .first();  // Take the least cloudy image
+
+// Check what you loaded
+print('Selected Sentinel-2 Image:', sent2);
+
+Map.addLayer(sent2,{bands:['B4','B3','B2']});
+
+Map.addLayer(sent2,{bands:['B4','B3','B2'], min:0, max:3000});
+
+// Add RGB composite to map, without parameters defined
+Map.addLayer(sent2,{bands:['B4','B3','B2']}, "Black");
+
+// Add RGB composite to map, with parameters defined
+Map.addLayer(sent2,{bands:['B4','B3','B2'], min:0, max:3000}, "True-colour");
+
+// Add RGB composite to map, using NIR for false-colour
+Map.addLayer(sent2,{bands:['B8','B4','B3'], min:0, max:3000}, "False-colour");
+
+// Add Band 1 to map
+Map.addLayer(sent2,{bands:['B1'], min:0, max:3000}, "B1");
+
+// Add a few more bands to map
+Map.addLayer(sent2,{bands:['B4'], min:0, max:3000}, "B4");
+Map.addLayer(sent2,{bands:['B8'], min:0, max:3000}, "B8");
+Map.addLayer(sent2,{bands:['B12'], min:0, max:3000}, "B12");
